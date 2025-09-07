@@ -38,6 +38,10 @@ class PredictionModel(ABC):
             distribution = self._predict_start()
         else:
             distribution = self._predict_next(text)
+        for a, b in pairwise(distribution):
+            if not a[-1::-1] < b[-1::-1]:
+                print(a, b)
+                raise Exception
         assert all(a[-1::-1] < b[-1::-1] for a, b in pairwise(distribution))
         return distribution
 
