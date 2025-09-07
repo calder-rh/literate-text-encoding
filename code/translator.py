@@ -283,13 +283,14 @@ class BitsToText(Translator):
         while bit_index < len(self.bits):
             distribution = self.generate_distribution()
             code = generate_huffman_code(distribution)
+            old_bit_index = bit_index
             next_token, bit_index = code.bits_to_token(self.bits, bit_index)
             assert isinstance(next_token, str)
             self.record_alternate_paths(distribution, next_token)
             self.text += next_token
 
             if progress:
-                print(next_token)
+                print(next_token, self.bits[old_bit_index:bit_index].to01())
 
         return self.text
 
@@ -329,6 +330,6 @@ class TextToBits(Translator):
             bits += next_bits
 
             if progress:
-                print(next_token)
+                print(next_token, next_bits.to01())
 
         return bits
