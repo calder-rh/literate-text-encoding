@@ -1,0 +1,4 @@
+.*
+!.gitignore
+thoughts.md
+*.pyc
