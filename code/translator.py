@@ -277,7 +277,7 @@ class BitsToText(Translator):
     def processed_text_length(self):
         return len(self.text)
 
-    def translate(self, progress=False) -> str:
+    def translate(self, progress=None) -> str:
         bit_index = 0
 
         while bit_index < len(self.bits):
@@ -289,8 +289,10 @@ class BitsToText(Translator):
             self.record_alternate_paths(distribution, next_token)
             self.text += next_token
 
-            if progress:
+            if progress == "tokens":
                 print(next_token, self.bits[old_bit_index:bit_index].to01())
+            elif progress == "text":
+                print(next_token, end="")
 
         return self.text
 
@@ -309,7 +311,7 @@ class TextToBits(Translator):
     def processed_text_length(self):
         return self.text_index
 
-    def translate(self, progress=False) -> bitarray:
+    def translate(self, progress=None) -> bitarray:
         bits = bitarray()
 
         while self.text_index < len(self.text):
@@ -329,7 +331,9 @@ class TextToBits(Translator):
             self.text_index += len(next_token)
             bits += next_bits
 
-            if progress:
+            if progress == "tokens":
                 print(next_token, next_bits.to01())
+            elif progress == "text":
+                print(next_token, end="")
 
         return bits
