@@ -698,5 +698,12 @@ class TestReversibility(ETETestCase):
                 raise
 
 
-if __name__ == "__main__":
-    unittest.main()
+# if __name__ == "__main__":
+#     unittest.main()
+
+
+rpm = RandomPredictionModel()
+in_bits = random_p(100)
+btt = translator.BitsToText(rpm, in_bits)
+btt.translate()
+print(btt.timers)

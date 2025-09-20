@@ -3,6 +3,7 @@ from typing import NamedTuple, Optional
 from bitarray import bitarray
 from itertools import pairwise, count
 from heapq import heapify, heappush, heappop
+from time import time
 
 
 class TokenProbability(NamedTuple):
@@ -129,6 +130,20 @@ def generate_huffman_code(distribution: list[TokenProbability]) -> InnerNode:
     return result
 
 
+class Timer:
+    def __init__(self):
+        self.times: dict[str, float] = {}
+
+    def start(self, label):
+        self.times[label] = time()
+
+    def stop(self, label):
+        self.times[label] = time() - self.times[label]
+
+    def __repr__(self):
+        return str(self.times)
+
+
 class Translator(ABC):
     def __init__(
         self,
@@ -139,6 +154,7 @@ class Translator(ABC):
         self.prediction_model = prediction_model
         self.expansion_threshold = expansion_threshold
         self.expansion_tolerance = expansion_tolerance
+        self.timers: list[Timer] = []
 
         self.alternate_paths: list[AlternatePath] = []
 
@@ -158,6 +174,8 @@ class Translator(ABC):
         Returns:
             list[TokenProbability]: _description_
         """
+
+        self.timers[-1].start("generate distribution")
 
         distribution = self.prediction_model.predict(self.processed_text)
 
@@ -214,9 +232,13 @@ class Translator(ABC):
 
             ngrams_to_expand = next_ngrams_to_expand
 
+        self.timers[-1].stop("generate distribution")
+
         return distribution
 
-    def filter_tokens(self, tokens: list[TokenProbability]) -> list[TokenProbability]:
+    def filter_tokens(
+        self, tokens: list[TokenProbability], times=None
+    ) -> list[TokenProbability]:
         """Filter out tokens that would create ambiguity when reading.
 
         Takes into consideration any other choices that could have been made in previous steps (stored in self.alternate_paths); if any of the tokens considered would result in one of those paths being chosen instead (by the greedy tokenizer), removes that token. Also filters self.alternate_paths to remove ones that are no longer relevant.
@@ -227,6 +249,8 @@ class Translator(ABC):
         Returns:
             list[TokenProbability]: filtered token distribution
         """
+
+        self.timers[-1].start("filter tokens")
 
         filtered_tokens = tokens.copy()
         filtered_alternate_paths: list[AlternatePath] = []
@@ -248,9 +272,12 @@ class Translator(ABC):
             ]
 
         self.alternate_paths = filtered_alternate_paths
+        self.timers[-1].stop("filter tokens")
         return filtered_tokens
 
-    def generate_distribution(self) -> list[TokenProbability]:
+    def generate_distribution(
+        self,
+    ) -> list[TokenProbability]:
         return self.filter_tokens(self.predict_tokens())
 
     def record_alternate_paths(
@@ -281,8 +308,12 @@ class BitsToText(Translator):
         bit_index = 0
 
         while bit_index < len(self.bits):
+            self.timers.append(Timer())
+
             distribution = self.generate_distribution()
+            self.timers[-1].start("generate huffman code")
             code = generate_huffman_code(distribution)
+            self.timers[-1].stop("generate huffman code")
             old_bit_index = bit_index
             next_token, bit_index = code.bits_to_token(self.bits, bit_index)
             assert isinstance(next_token, str)
@@ -315,6 +346,8 @@ class TextToBits(Translator):
         bits = bitarray()
 
         while self.text_index < len(self.text):
+            self.timers.append(Timer())
+
             distribution = self.generate_distribution()
 
             next_token = ""
@@ -324,7 +357,9 @@ class TextToBits(Translator):
                 ) > len(next_token):
                     next_token = token.text
 
+            self.timers[-1].start("generate huffman code")
             code = generate_huffman_code(distribution)
+            self.timers[-1].stop("generate huffman code")
             next_bits = code.token_to_bits(next_token)
             assert isinstance(next_bits, bitarray)
             self.record_alternate_paths(distribution, next_token)
